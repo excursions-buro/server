@@ -1,28 +1,41 @@
+import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
 import { PrismaClient } from '../src/generated/prisma';
+
+dotenv.config();
+
 const prisma = new PrismaClient();
+const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS!) || 10;
 
 async function main() {
-  // Очистка
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.scheduleSlot.deleteMany();
-  await prisma.schedule.deleteMany();
-  await prisma.ticketCategory.deleteMany();
-  await prisma.tour.deleteMany();
-  await prisma.tourType.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.discount.deleteMany();
-
-  // Типы экскурсий
-  const [walking, water, bus, individual] = await Promise.all([
-    prisma.tourType.create({ data: { name: 'Пешеходная' } }),
-    prisma.tourType.create({ data: { name: 'Водная' } }),
-    prisma.tourType.create({ data: { name: 'Автобусная' } }),
-    prisma.tourType.create({ data: { name: 'Индивидуальная' } }),
+  // Очистка данных в правильном порядке
+  await prisma.$transaction([
+    prisma.orderItem.deleteMany(),
+    prisma.order.deleteMany(),
+    prisma.scheduleSlot.deleteMany(),
+    prisma.schedule.deleteMany(),
+    prisma.ticketCategory.deleteMany(),
+    prisma.tour.deleteMany(),
+    prisma.tourType.deleteMany(),
+    prisma.discount.deleteMany(),
+    prisma.user.deleteMany(),
   ]);
 
-  // Пример туров
-  const [tour1, tour2] = await Promise.all([
+  // Создание типов экскурсий
+  const tourTypes = await prisma.tourType.createMany({
+    data: [
+      { name: 'Пешеходная' },
+      { name: 'Водная' },
+      { name: 'Автобусная' },
+      { name: 'Индивидуальная' },
+    ],
+  });
+
+  // Получаем созданные типы
+  const [walking, water, bus, individual] = await prisma.tourType.findMany();
+
+  // Создание туров
+  const tours = await Promise.all([
     prisma.tour.create({
       data: {
         title: 'Москва историческая',
@@ -41,108 +54,127 @@ async function main() {
     }),
   ]);
 
-  // Категории билетов для первого тура
+  // Создание категорий билетов
   await prisma.ticketCategory.createMany({
     data: [
-      { name: 'Взрослый', price: 1000, tourId: tour1.id },
-      { name: 'Дети до 14', price: 600, tourId: tour1.id },
-      { name: 'Пенсионеры', price: 700, tourId: tour1.id },
-      { name: 'Инвалиды', price: 500, tourId: tour1.id },
+      // Для первого тура
+      { name: 'Взрослый', price: 1000, tourId: tours[0].id },
+      { name: 'Дети до 14', price: 600, tourId: tours[0].id },
+      { name: 'Пенсионеры', price: 700, tourId: tours[0].id },
+
+      // Для второго тура
+      { name: 'Взрослый', price: 1500, tourId: tours[1].id },
+      { name: 'Студенты', price: 900, tourId: tours[1].id },
+      { name: 'Группы от 10 чел.', price: 1200, tourId: tours[1].id },
     ],
   });
 
-  // Категории билетов для второго тура
-  await prisma.ticketCategory.createMany({
-    data: [
-      { name: 'Взрослый', price: 1500, tourId: tour2.id },
-      { name: 'Студенты', price: 900, tourId: tour2.id },
-      { name: 'Группы от 10 человек', price: 1200, tourId: tour2.id },
-    ],
-  });
-
-  // Расписание для tour1
-  await prisma.schedule.create({
-    data: {
-      tourId: tour1.id,
-      startDate: new Date('2025-05-20'),
-      endDate: new Date('2025-06-20'),
-      maxPeople: 20,
-      slots: {
-        create: [
-          { weekDay: 2, time: '14:00' }, // вторник
-          { weekDay: 3, time: '15:00' }, // среда
-          { weekDay: 3, time: '17:00' },
-        ],
-      },
-    },
-  });
-
-  // Расписание для tour2 с ограничением и другим временем
-  await prisma.schedule.create({
-    data: {
-      tourId: tour2.id,
-      startDate: new Date('2025-06-01'),
-      endDate: new Date('2025-07-01'),
-      maxPeople: 15,
-      slots: {
-        create: [
-          { weekDay: 5, time: '18:00' }, // пятница
-          { weekDay: 6, time: '16:00' }, // суббота
-        ],
-      },
-    },
-  });
-
-  // Пользователи
-  await prisma.user.createMany({
+  // Создание расписаний
+  await prisma.schedule.createMany({
     data: [
       {
+        tourId: tours[0].id,
+        startDate: new Date('2025-05-20'),
+        endDate: new Date('2025-06-20'),
+        maxPeople: 20,
+      },
+      {
+        tourId: tours[1].id,
+        startDate: new Date('2025-06-01'),
+        endDate: new Date('2025-07-01'),
+        maxPeople: 15,
+      },
+    ],
+  });
+
+  // Добавление временных слотов
+  const schedules = await prisma.schedule.findMany();
+  await prisma.scheduleSlot.createMany({
+    data: [
+      // Для первого расписания
+      { scheduleId: schedules[0].id, weekDay: 2, time: '14:00' },
+      { scheduleId: schedules[0].id, weekDay: 3, time: '15:00' },
+
+      // Для второго расписания
+      { scheduleId: schedules[1].id, weekDay: 5, time: '18:00' },
+      { scheduleId: schedules[1].id, weekDay: 6, time: '16:00' },
+    ],
+  });
+
+  // Создание пользователей с хешированными паролями
+  const users = await Promise.all([
+    prisma.user.create({
+      data: {
         email: 'admin@mskburo.ru',
-        password: 'hashed-password-here',
-        name: 'Admin',
+        password: await bcrypt.hash('SecureAdmin123!', SALT_ROUNDS),
+        name: 'Администратор',
         role: 'ADMIN',
+        refreshTokens: [],
       },
-      {
+    }),
+    prisma.user.create({
+      data: {
         email: 'user1@example.com',
-        password: 'hashed-password-user1',
+        password: await bcrypt.hash('UserPass123!', SALT_ROUNDS),
         name: 'Анна Иванова',
         role: 'USER',
+        refreshTokens: [],
       },
-      {
-        email: 'user2@example.com',
-        password: 'hashed-password-user2',
-        name: 'Петр Сидоров',
-        role: 'USER',
+    }),
+  ]);
+
+  // Создание тестовых заказов
+  const ticketCategories = await prisma.ticketCategory.findMany();
+
+  await prisma.order.create({
+    data: {
+      userId: users[1].id,
+      totalPrice: 2600,
+      items: {
+        create: [
+          {
+            ticketCategoryId: ticketCategories[0].id,
+            quantity: 2,
+            price: 1000,
+          },
+          {
+            ticketCategoryId: ticketCategories[3].id,
+            quantity: 1,
+            price: 1500,
+          },
+        ],
       },
-    ],
+    },
   });
 
-  // Скидки
+  // Создание скидок
   await prisma.discount.createMany({
     data: [
       {
-        code: 'WELCOME10',
-        value: 10,
+        code: 'SUMMER2025',
+        value: 15,
         isPercent: true,
-        validFrom: new Date(),
-        validTo: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+        validFrom: new Date('2025-06-01'),
+        validTo: new Date('2025-09-01'),
       },
       {
-        code: 'GROUP5',
-        value: 5,
+        code: 'EARLYBIRD',
+        value: 500,
         isPercent: false,
         validFrom: new Date(),
-        validTo: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+        validTo: new Date('2025-12-31'),
       },
     ],
   });
 
-  console.log('✅ Расширенное наполнение БД завершено.');
+  console.log('✅ База данных успешно заполнена!');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Ошибка заполнения БД:', e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
