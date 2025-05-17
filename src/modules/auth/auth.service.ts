@@ -1,4 +1,3 @@
-// modules/auth/auth.service.ts
 import bcrypt from 'bcryptjs';
 import {
   generateAccessToken,
@@ -26,7 +25,7 @@ export const comparePasswords = (password: string, hash: string) => {
   return bcrypt.compare(password, hash);
 };
 
-export const saveRefreshToken = (userId: number, token: string) => {
+export const saveRefreshToken = (userId: string, token: string) => {
   return prisma.user.update({
     where: { id: userId },
     data: { refreshTokens: { push: token } },
@@ -34,7 +33,7 @@ export const saveRefreshToken = (userId: number, token: string) => {
 };
 
 export const replaceRefreshToken = (
-  userId: number,
+  userId: string,
   oldToken: string,
   newToken: string
 ) => {
@@ -50,7 +49,7 @@ export const replaceRefreshToken = (
   });
 };
 
-export const removeRefreshToken = async (userId: number, token: string) => {
+export const removeRefreshToken = async (userId: string, token: string) => {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return null;
 
@@ -65,10 +64,10 @@ export const removeRefreshToken = async (userId: number, token: string) => {
 };
 
 export const decodeRefreshToken = (token: string) => {
-  return verifyRefreshToken(token) as { userId: number };
+  return verifyRefreshToken(token) as { userId: string };
 };
 
-export const createTokens = (userId: number, role: string) => ({
+export const createTokens = (userId: string, role: string) => ({
   accessToken: generateAccessToken(userId, role),
   refreshToken: generateRefreshToken(userId),
 });

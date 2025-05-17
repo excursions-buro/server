@@ -8,17 +8,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id         Int      @id @default(autoincrement())
-  email      String   @unique
-  password   String
-  name       String
-  role       Role     @default(USER)
-  orders     Order[]
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String
+  role          Role     @default(USER)
+  orders        Order[]
   refreshTokens String[]
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 enum Role {
@@ -26,74 +25,85 @@ enum Role {
   USER
 }
 
-model TourType {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  tours Tour[]
+model ExcursionType {
+  id         String      @id @default(uuid())
+  name       String      @unique
+  excursions Excursion[]
 }
 
-model Tour {
-  id           Int               @id @default(autoincrement())
+model ExcursionImage {
+  id          String    @id @default(uuid())
+  url         String
+  excursion   Excursion @relation(fields: [excursionId], references: [id])
+  excursionId String
+}
+
+
+model Excursion {
+  id           String            @id @default(uuid())
   title        String
   description  String
-  type         TourType          @relation(fields: [typeId], references: [id])
-  typeId       Int
+  type         ExcursionType     @relation(fields: [typeId], references: [id])
+  typeId       String
   basePrice    Float
+  mainImage    String?           
+  images       ExcursionImage[] 
   schedules    Schedule[]
   tickets      TicketCategory[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 }
 
+
 model TicketCategory {
-  id       Int     @id @default(autoincrement())
-  name     String
-  price    Float
-  tour     Tour    @relation(fields: [tourId], references: [id])
-  tourId   Int
-  orders   OrderItem[]
+  id               String         @id @default(uuid())
+  name             String
+  price            Float
+  excursion        Excursion      @relation(fields: [excursionId], references: [id])
+  excursionId      String
+  orders           OrderItem[]
 }
 
 model Schedule {
-  id           Int            @id @default(autoincrement())
-  tour         Tour           @relation(fields: [tourId], references: [id])
-  tourId       Int
+  id           String          @id @default(uuid())
+  excursion    Excursion       @relation(fields: [excursionId], references: [id])
+  excursionId  String
   startDate    DateTime
   endDate      DateTime
   maxPeople    Int
   slots        ScheduleSlot[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 }
 
 model ScheduleSlot {
-  id          Int       @id @default(autoincrement())
+  id          String    @id @default(uuid())
   schedule    Schedule  @relation(fields: [scheduleId], references: [id])
-  scheduleId  Int
-  weekDay     Int       
-  time        String    
+  scheduleId  String
+  weekDay     Int
+  time        String
 }
 
 model Order {
-  id          Int          @id @default(autoincrement())
-  user        User         @relation(fields: [userId], references: [id])
-  userId      Int
+  id          String         @id @default(uuid())
+  user        User           @relation(fields: [userId], references: [id])
+  userId      String
   items       OrderItem[]
   totalPrice  Float
-  status      OrderStatus  @default(PENDING)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  emailSent   Boolean      @default(false)
+  status      OrderStatus    @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  emailSent   Boolean        @default(false)
 }
 
 model OrderItem {
-  id               Int             @id @default(autoincrement())
+  id               String          @id @default(uuid())
   order            Order           @relation(fields: [orderId], references: [id])
-  orderId          Int
+  orderId          String
   ticketCategory   TicketCategory  @relation(fields: [ticketCategoryId], references: [id])
-  ticketCategoryId Int
+  ticketCategoryId String
   quantity         Int
-  price            Float           
+  price            Float
 }
 
 enum OrderStatus {
@@ -103,9 +113,9 @@ enum OrderStatus {
 }
 
 model Discount {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(uuid())
   code       String   @unique
-  value      Float    
+  value      Float
   isPercent  Boolean  @default(true)
   active     Boolean  @default(true)
   validFrom  DateTime

@@ -6,11 +6,12 @@ CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'PAID', 'CANCELLED');
 
 -- CreateTable
 CREATE TABLE "User" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
-    "name" TEXT,
+    "name" TEXT NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'USER',
+    "refreshTokens" TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -18,40 +19,50 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "TourType" (
-    "id" SERIAL NOT NULL,
+CREATE TABLE "ExcursionType" (
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
 
-    CONSTRAINT "TourType_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ExcursionType_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Tour" (
-    "id" SERIAL NOT NULL,
+CREATE TABLE "ExcursionImage" (
+    "id" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "excursionId" TEXT NOT NULL,
+
+    CONSTRAINT "ExcursionImage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Excursion" (
+    "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "typeId" INTEGER NOT NULL,
+    "typeId" TEXT NOT NULL,
     "basePrice" DOUBLE PRECISION NOT NULL,
+    "mainImage" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Tour_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Excursion_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "TicketCategory" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
-    "tourId" INTEGER NOT NULL,
+    "excursionId" TEXT NOT NULL,
 
     CONSTRAINT "TicketCategory_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Schedule" (
-    "id" SERIAL NOT NULL,
-    "tourId" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "excursionId" TEXT NOT NULL,
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "maxPeople" INTEGER NOT NULL,
@@ -63,8 +74,8 @@ CREATE TABLE "Schedule" (
 
 -- CreateTable
 CREATE TABLE "ScheduleSlot" (
-    "id" SERIAL NOT NULL,
-    "scheduleId" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "scheduleId" TEXT NOT NULL,
     "weekDay" INTEGER NOT NULL,
     "time" TEXT NOT NULL,
 
@@ -73,8 +84,8 @@ CREATE TABLE "ScheduleSlot" (
 
 -- CreateTable
 CREATE TABLE "Order" (
-    "id" SERIAL NOT NULL,
-    "userId" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
     "totalPrice" DOUBLE PRECISION NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,9 +97,9 @@ CREATE TABLE "Order" (
 
 -- CreateTable
 CREATE TABLE "OrderItem" (
-    "id" SERIAL NOT NULL,
-    "orderId" INTEGER NOT NULL,
-    "ticketCategoryId" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "ticketCategoryId" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
 
@@ -97,7 +108,7 @@ CREATE TABLE "OrderItem" (
 
 -- CreateTable
 CREATE TABLE "Discount" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "value" DOUBLE PRECISION NOT NULL,
     "isPercent" BOOLEAN NOT NULL DEFAULT true,
@@ -114,19 +125,22 @@ CREATE TABLE "Discount" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "TourType_name_key" ON "TourType"("name");
+CREATE UNIQUE INDEX "ExcursionType_name_key" ON "ExcursionType"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Discount_code_key" ON "Discount"("code");
 
 -- AddForeignKey
-ALTER TABLE "Tour" ADD CONSTRAINT "Tour_typeId_fkey" FOREIGN KEY ("typeId") REFERENCES "TourType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ExcursionImage" ADD CONSTRAINT "ExcursionImage_excursionId_fkey" FOREIGN KEY ("excursionId") REFERENCES "Excursion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "TicketCategory" ADD CONSTRAINT "TicketCategory_tourId_fkey" FOREIGN KEY ("tourId") REFERENCES "Tour"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Excursion" ADD CONSTRAINT "Excursion_typeId_fkey" FOREIGN KEY ("typeId") REFERENCES "ExcursionType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Schedule" ADD CONSTRAINT "Schedule_tourId_fkey" FOREIGN KEY ("tourId") REFERENCES "Tour"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "TicketCategory" ADD CONSTRAINT "TicketCategory_excursionId_fkey" FOREIGN KEY ("excursionId") REFERENCES "Excursion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Schedule" ADD CONSTRAINT "Schedule_excursionId_fkey" FOREIGN KEY ("excursionId") REFERENCES "Excursion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ScheduleSlot" ADD CONSTRAINT "ScheduleSlot_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
