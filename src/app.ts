@@ -8,9 +8,16 @@ import { excursionsRoutes } from './modules/excursion';
 
 const app = express();
 
-app.use(cors());
-app.use(cookieParser());
+app.use(
+  cors({
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
+app.use(cookieParser());
 app.use(errorHandler);
 
 app.use('/api/auth', authRoutes);
