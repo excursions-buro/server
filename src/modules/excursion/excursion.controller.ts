@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '../../utils/catchAsync';
 import * as excursionService from './excursion.service';
+import { getExcursionTypes as getExcursionTypesService } from './excursion.service';
 
 export const getExcursions = catchAsync(async (req: Request, res: Response) => {
   const filters = {
@@ -29,5 +30,18 @@ export const getExcursionById = catchAsync(
     }
 
     res.json(excursion);
+  }
+);
+
+export const getExcursionTypes = catchAsync(
+  async (req: Request, res: Response) => {
+    const types = await getExcursionTypesService();
+
+    if (!types) {
+      res.status(404).json({ error: 'Excursion-types not found' });
+      return;
+    }
+
+    res.json(types);
   }
 );

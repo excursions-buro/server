@@ -46,3 +46,7 @@ export const getExcursionById = async (id: string) => {
     include: { images: true, tickets: true, schedules: true, type: true },
   });
 };
+
+export const getExcursionTypes = async () => {
+  return prisma.excursionType.findMany();
+};
