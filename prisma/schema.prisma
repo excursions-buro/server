@@ -18,17 +18,22 @@ model User {
   refreshTokens String[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([email])
 }
 
 enum Role {
   ADMIN
   USER
+  GUIDE
 }
 
 model ExcursionType {
   id         String      @id @default(uuid())
   name       String      @unique
   excursions Excursion[]
+
+  @@index([name])
 }
 
 model ExcursionImage {
@@ -36,8 +41,9 @@ model ExcursionImage {
   url         String
   excursion   Excursion @relation(fields: [excursionId], references: [id])
   excursionId String
-}
 
+  @@index([excursionId])
+}
 
 model Excursion {
   id           String            @id @default(uuid())
@@ -46,14 +52,18 @@ model Excursion {
   type         ExcursionType     @relation(fields: [typeId], references: [id])
   typeId       String
   basePrice    Float
+  currency     String            @default("RUB")
   mainImage    String?           
   images       ExcursionImage[] 
   schedules    Schedule[]
   tickets      TicketCategory[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-}
 
+  @@index([title])
+  @@index([typeId])
+  @@index([createdAt])
+}
 
 model TicketCategory {
   id               String         @id @default(uuid())
@@ -62,6 +72,9 @@ model TicketCategory {
   excursion        Excursion      @relation(fields: [excursionId], references: [id])
   excursionId      String
   orders           OrderItem[]
+
+  @@index([excursionId])
+  @@index([name])
 }
 
 model Schedule {
@@ -70,30 +83,55 @@ model Schedule {
   excursionId  String
   startDate    DateTime
   endDate      DateTime
-  maxPeople    Int
+  status       ScheduleStatus  @default(ACTIVE)
   slots        ScheduleSlot[]
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  @@index([excursionId])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status])
+}
+
+enum ScheduleStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }
 
 model ScheduleSlot {
-  id          String    @id @default(uuid())
-  schedule    Schedule  @relation(fields: [scheduleId], references: [id])
+  id          String       @id @default(uuid())
+  schedule    Schedule     @relation(fields: [scheduleId], references: [id])
   scheduleId  String
   weekDay     Int
   time        String
+  maxPeople   Int
+  orderItems  OrderItem[]
+
+  @@index([scheduleId])
+  @@index([weekDay])
+  @@index([time])
 }
 
 model Order {
-  id          String         @id @default(uuid())
-  user        User           @relation(fields: [userId], references: [id])
-  userId      String
-  items       OrderItem[]
-  totalPrice  Float
-  status      OrderStatus    @default(PENDING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  emailSent   Boolean        @default(false)
+  id            String         @id @default(uuid())
+  user          User           @relation(fields: [userId], references: [id])
+  userId        String
+  items         OrderItem[]
+  totalPrice    Float
+  status        OrderStatus    @default(PENDING)
+  discount      Discount?      @relation(fields: [discountId], references: [id])
+  discountId    String?
+  discountAmount Float?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  emailSent     Boolean        @default(false)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([totalPrice])
 }
 
 model OrderItem {
@@ -104,22 +142,38 @@ model OrderItem {
   ticketCategoryId String
   quantity         Int
   price            Float
+  scheduleSlot     ScheduleSlot?   @relation(fields: [scheduleSlotId], references: [id])
+  scheduleSlotId   String?
+
+  @@index([orderId])
+  @@index([ticketCategoryId])
+  @@index([scheduleSlotId])
 }
 
 enum OrderStatus {
   PENDING
   PAID
   CANCELLED
+  REFUNDED
 }
 
 model Discount {
-  id         String   @id @default(uuid())
-  code       String   @unique
-  value      Float
-  isPercent  Boolean  @default(true)
-  active     Boolean  @default(true)
-  validFrom  DateTime
-  validTo    DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String   @id @default(uuid())
+  code          String   @unique
+  value         Float
+  isPercent     Boolean  @default(true)
+  active        Boolean  @default(true)
+  validFrom     DateTime
+  validTo       DateTime
+  maxUses       Int?     
+  usedCount     Int      @default(0)
+  minOrderAmount Float?
+  orders        Order[]  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([code])
+  @@index([validFrom])
+  @@index([validTo])
+  @@index([active])
 }

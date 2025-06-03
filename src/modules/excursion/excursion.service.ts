@@ -30,12 +30,25 @@ export const getExcursions = async (filters: ExcursionFilters) => {
   if (filters.peopleCount) {
     where.schedules = where.schedules || {};
     where.schedules.some = where.schedules.some || {};
-    where.schedules.some.maxPeople = { gte: filters.peopleCount };
+    where.schedules.some.slots = {
+      some: {
+        maxPeople: { gte: filters.peopleCount },
+      },
+    };
   }
 
   return prisma.excursion.findMany({
     where,
-    include: { images: true, tickets: true, schedules: true, type: true },
+    include: {
+      images: true,
+      tickets: true,
+      schedules: {
+        include: {
+          slots: true,
+        },
+      },
+      type: true,
+    },
     orderBy: { createdAt: 'desc' },
   });
 };
@@ -43,7 +56,16 @@ export const getExcursions = async (filters: ExcursionFilters) => {
 export const getExcursionById = async (id: string) => {
   return prisma.excursion.findUnique({
     where: { id },
-    include: { images: true, tickets: true, schedules: true, type: true },
+    include: {
+      images: true,
+      tickets: true,
+      schedules: {
+        include: {
+          slots: true,
+        },
+      },
+      type: true,
+    },
   });
 };
 
