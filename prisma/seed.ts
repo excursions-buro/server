@@ -261,10 +261,13 @@ async function main() {
   });
 
   console.log('🧾 Создание тестовых заказов...');
-  // Заказ без скидки
+  // Заказ без скидки (для авторизованного пользователя)
   await prisma.order.create({
     data: {
       userId: users[1].id,
+      contactName: 'Анна Иванова',
+      contactEmail: 'user1@example.com',
+      contactPhone: '+79991234567',
       totalPrice: 2600,
       items: {
         create: [
@@ -285,10 +288,13 @@ async function main() {
     },
   });
 
-  // Заказ со скидкой
+  // Заказ со скидкой (для авторизованного пользователя)
   await prisma.order.create({
     data: {
       userId: users[1].id,
+      contactName: 'Анна Иванова',
+      contactEmail: 'user1@example.com',
+      contactPhone: '+79991234567',
       totalPrice: 4800,
       discountId: summerDiscount?.id,
       discountAmount: 720, // 15% от 4800
@@ -306,10 +312,13 @@ async function main() {
     },
   });
 
-  // Заказ с VIP билетами
+  // Заказ с VIP билетами (для администратора)
   await prisma.order.create({
     data: {
       userId: users[0].id,
+      contactName: 'Администратор',
+      contactEmail: 'admin@mskburo.ru',
+      contactPhone: '+79998887766',
       totalPrice: 10500,
       status: 'PAID',
       emailSent: true,
@@ -320,6 +329,33 @@ async function main() {
             quantity: 3,
             price: 3500,
             scheduleSlotId: slots[7].id,
+          },
+        ],
+      },
+    },
+  });
+
+  // Гостевой заказ (без пользователя)
+  await prisma.order.create({
+    data: {
+      contactName: 'Петр Сидоров',
+      contactEmail: 'guest@example.com',
+      contactPhone: '+79995554433',
+      totalPrice: 3000,
+      status: 'PENDING',
+      items: {
+        create: [
+          {
+            ticketCategoryId: ticketCategories[1].id,
+            quantity: 2,
+            price: 600,
+            scheduleSlotId: slots[2].id,
+          },
+          {
+            ticketCategoryId: ticketCategories[2].id,
+            quantity: 1,
+            price: 700,
+            scheduleSlotId: slots[2].id,
           },
         ],
       },
@@ -340,7 +376,7 @@ async function main() {
   console.log('🚩 Гид:', users[2].email);
   console.log('🎫 Количество экскурсий:', excursions.length);
   console.log('⏱ Количество слотов:', slots.length);
-  console.log('💳 Количество заказов:', 3);
+  console.log('💳 Количество заказов:', 4); // Обновили счетчик заказов
   console.log('🏷 Количество скидок:', 3);
 }
 

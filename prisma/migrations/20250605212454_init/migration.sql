@@ -90,7 +90,7 @@ CREATE TABLE "ScheduleSlot" (
 -- CreateTable
 CREATE TABLE "Order" (
     "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "userId" TEXT,
     "totalPrice" DOUBLE PRECISION NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
     "discountId" TEXT,
@@ -98,6 +98,9 @@ CREATE TABLE "Order" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "emailSent" BOOLEAN NOT NULL DEFAULT false,
+    "contactName" TEXT NOT NULL,
+    "contactEmail" TEXT NOT NULL,
+    "contactPhone" TEXT,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
@@ -235,7 +238,7 @@ ALTER TABLE "Schedule" ADD CONSTRAINT "Schedule_excursionId_fkey" FOREIGN KEY ("
 ALTER TABLE "ScheduleSlot" ADD CONSTRAINT "ScheduleSlot_scheduleId_fkey" FOREIGN KEY ("scheduleId") REFERENCES "Schedule"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Order" ADD CONSTRAINT "Order_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_discountId_fkey" FOREIGN KEY ("discountId") REFERENCES "Discount"("id") ON DELETE SET NULL ON UPDATE CASCADE;

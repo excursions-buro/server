@@ -4,6 +4,7 @@ import express from 'express';
 
 import { errorHandler } from './middleware/errorHandler';
 import { authRoutes } from './modules/auth';
+import { bookingsRoutes } from './modules/bookings';
 import { excursionsRoutes } from './modules/excursion';
 
 const app = express();
@@ -22,5 +23,6 @@ app.use(errorHandler);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/excursions', excursionsRoutes);
+app.use('/api/bookings', bookingsRoutes);
 
 export default app;
