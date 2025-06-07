@@ -1,4 +1,7 @@
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import { prisma } from '../../utils/prisma';
+import { sendBookingEmail } from './email.service';
 
 export const getBookedSeats = async (scheduleId: string, slotTime: string) => {
   const slot = await prisma.scheduleSlot.findFirst({
@@ -27,7 +30,7 @@ export const createBooking = async (
     contact: { name: string; email: string; phone?: string };
   }
 ) => {
-  // Находим слот с проверкой расписания
+  // Находим слот с проверкой расписания и включаем дополнительные данные
   const slot = await prisma.scheduleSlot.findFirst({
     where: {
       scheduleId: bookingData.scheduleId,
@@ -36,8 +39,13 @@ export const createBooking = async (
     include: {
       orderItems: true,
       schedule: {
-        select: {
-          excursionId: true,
+        include: {
+          excursion: {
+            select: {
+              title: true,
+              description: true,
+            },
+          },
         },
       },
     },
@@ -69,17 +77,20 @@ export const createBooking = async (
     throw new Error('Недостаточно свободных мест');
   }
 
-  // Получаем цены билетов одним запросом
+  // Получаем цены и названия билетов одним запросом
   const ticketIds = bookingData.tickets.map((t) => t.id);
   const ticketCategories = await prisma.ticketCategory.findMany({
     where: { id: { in: ticketIds } },
-    select: { id: true, price: true },
+    select: { id: true, price: true, name: true },
   });
 
   // Создаем карту цен для быстрого доступа
   const ticketPriceMap = new Map(
     ticketCategories.map((tc) => [tc.id, tc.price])
   );
+
+  // Создаем карту названий билетов
+  const ticketNameMap = new Map(ticketCategories.map((tc) => [tc.id, tc.name]));
 
   // Рассчитываем общую стоимость
   const totalPrice = bookingData.tickets.reduce((sum, ticket) => {
@@ -111,9 +122,48 @@ export const createBooking = async (
       },
     },
     include: {
-      items: true,
+      items: {
+        include: {
+          ticketCategory: true,
+        },
+      },
     },
   });
+
+  // Отправляем письмо с подтверждением бронирования
+  try {
+    // Формируем данные для письма
+    const excursionDate = format(
+      new Date(slot.schedule.startDate),
+      'dd MMMM yyyy',
+      { locale: ru }
+    );
+
+    await sendBookingEmail({
+      to: bookingData.contact.email,
+      orderId: order.id,
+      contactName: bookingData.contact.name,
+      excursionTitle: slot.schedule.excursion.title,
+      excursionDescription: slot.schedule.excursion.description,
+      excursionDate,
+      excursionTime: bookingData.slotTime,
+      tickets: bookingData.tickets.map((ticket) => ({
+        name: ticketNameMap.get(ticket.id) || 'Билет',
+        quantity: ticket.count,
+        price: ticketPriceMap.get(ticket.id) || 0,
+      })),
+      totalPrice,
+    });
+
+    // Обновляем статус отправки письма
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { emailSent: true },
+    });
+  } catch (emailError) {
+    console.error('Ошибка отправки письма:', emailError);
+    // Можно добавить логирование ошибки, но не прерывать выполнение
+  }
 
   return order;
 };
