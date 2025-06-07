@@ -111,3 +111,21 @@ export const logout = catchAsync(
       .sendStatus(204);
   }
 );
+
+export const sendVerificationCode = catchAsync(
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
+    await AuthService.generateAndSendVerificationCode(email);
+    res.status(200).json({ message: 'Verification code sent' });
+  }
+);
+
+export const verifyCode = catchAsync(async (req: Request, res: Response) => {
+  const { email, code } = req.body;
+  const isValid = AuthService.verifyCode(email, code);
+  if (!isValid) {
+    res.status(400).json({ error: 'Invalid or expired verification code' });
+    return;
+  }
+  res.status(200).json({ message: 'Code verified successfully' });
+});

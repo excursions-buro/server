@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
 } from '../../utils/jwt';
 import { prisma } from '../../utils/prisma';
+import { sendVerificationCodeEmail } from './email.service';
+
+const verificationCodes = new Map<string, { code: string; expiresAt: Date }>();
 
 export const findUserByEmail = (email: string) => {
   return prisma.user.findUnique({ where: { email } });
@@ -71,3 +75,24 @@ export const createTokens = (userId: string, role: string) => ({
   accessToken: generateAccessToken(userId, role),
   refreshToken: generateRefreshToken(userId),
 });
+
+export const generateAndSendVerificationCode = async (email: string) => {
+  const code = crypto.randomInt(100000, 999999).toString();
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  verificationCodes.set(email, { code, expiresAt });
+
+  await sendVerificationCodeEmail(email, code);
+};
+
+export const verifyCode = (email: string, code: string): boolean => {
+  const record = verificationCodes.get(email);
+  if (!record) return false;
+  if (record.expiresAt < new Date()) {
+    verificationCodes.delete(email);
+    return false;
+  }
+  if (record.code !== code) return false;
+
+  verificationCodes.delete(email);
+  return true;
+};
